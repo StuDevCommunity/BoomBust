@@ -150,11 +150,11 @@ class GameLogger {
     }
 
     // Fast Track
-    logFastTrackEnter(startingCash, startingCashflow) {
+    logFastTrackEnter(startingCash, startingCashFlow) {
         return this.log(LOG_TYPES.FAST_TRACK_ENTER, {
             startingCash,
-            startingCashflow,
-            message: `Entered Fast Track with $${startingCash.toLocaleString()} cash, $${startingCashflow.toLocaleString()} cashflow`
+            startingCashFlow,
+            message: `Entered Fast Track with $${startingCash.toLocaleString()} cash, $${startingCashFlow.toLocaleString()} cash flow`
         });
     }
 
@@ -163,7 +163,7 @@ class GameLogger {
             amount,
             previousBalance,
             newBalance,
-            message: `Fast Track Cashflow Day: +$${amount.toLocaleString()}`
+            message: `Fast Track Cash Flow Day: +$${amount.toLocaleString()}`
         });
     }
 

@@ -407,7 +407,7 @@ function awardRatRacePayday(G, playerID, multiplier = 1) {
 	});
 }
 
-function collectFastTrackCashflowDay(G, playerID) {
+function collectFastTrackCashFlowDay(G, playerID) {
 	const player = G.players[playerID];
 	player.fastTrackCash += player.fastTrackIncomeCurrent;
 	G.gameLog.push({
@@ -932,7 +932,7 @@ function handleFastTrackLanding(G, playerID, space, random) {
 	if (!space || !player) return;
 
 	if (space.type === 'cashflowDay') {
-		collectFastTrackCashflowDay(G, playerID);
+		collectFastTrackCashFlowDay(G, playerID);
 		return;
 	}
 

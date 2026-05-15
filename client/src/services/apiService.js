@@ -1,8 +1,4 @@
-// Base URL for the backend
-// Since the frontend is now served directly by the backend server,
-// we can use a relative path for all API calls. This works natively
-// both in local development and within Discord's proxy environment.
-const API_BASE_URL = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export async function createRoom(playerName) {
 	try {
@@ -13,7 +9,8 @@ export async function createRoom(playerName) {
 		});
 
 		if (!response.ok) {
-			throw new Error('Failed to create room on server');
+			const details = await response.text();
+			throw new Error(`Failed to create room on server (${response.status})${details ? `: ${details}` : ''}`);
 		}
 
 		const data = await response.json();

@@ -672,7 +672,7 @@ const GamePage = () => {
 		const client = Client({
 			game: BoombustGame,
 			numPlayers: resolvedNumPlayers,
-			multiplayer: isRemote ? SocketIO({ server: window.location.origin }) : undefined,
+			multiplayer: isRemote ? SocketIO({ server: import.meta.env.VITE_BGA_SERVER_URL || window.location.origin }) : undefined,
 			matchID: isRemote ? roomCode : 'local',
 			playerID: isRemote ? resolvedPlayerId : '0',
 			debug: false,

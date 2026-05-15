@@ -4,7 +4,7 @@ const SPECIAL_SPACE_BY_ID = {
 	1: {
 		id: 1,
 		type: 'cashflowDay',
-		title: 'Cashflow Day',
+		title: 'Cash Flow Day',
 		description: 'Collect your current Fast Track income.',
 	},
 	5: {
@@ -23,7 +23,7 @@ const SPECIAL_SPACE_BY_ID = {
 	21: {
 		id: 21,
 		type: 'cashflowDay',
-		title: 'Cashflow Day',
+		title: 'Cash Flow Day',
 		description: 'Collect your current Fast Track income.',
 	},
 	25: {
@@ -35,7 +35,7 @@ const SPECIAL_SPACE_BY_ID = {
 	37: {
 		id: 37,
 		type: 'cashflowDay',
-		title: 'Cashflow Day',
+		title: 'Cash Flow Day',
 		description: 'Collect your current Fast Track income.',
 	},
 	41: {
