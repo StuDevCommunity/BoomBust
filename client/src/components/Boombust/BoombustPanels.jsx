@@ -23,7 +23,7 @@ import {
 	TrendingFlat,
 	TrendingUp,
 } from '@mui/icons-material';
-import { getStockDefinition } from '../../game/boombust/stockMarketEngine';
+import { getStockDefinition } from '@boombust/game-core/boombust/stockMarketEngine';
 
 const panelSx = {
 	bgcolor: 'var(--gb-shell)',

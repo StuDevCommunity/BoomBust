@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@boombust/multiplayer": "workspace:*",
     "@koa/cors": "^5.0.0",
     "boardgame.io": "^0.50.2",
     "koa-body": "^7.0.1",

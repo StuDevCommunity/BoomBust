@@ -1,0 +1,14 @@
+{
+  "name": "@boombust/multiplayer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./boardgameio": "./src/boardgameio/BoombustGameAdapter.js"
+  },
+  "dependencies": {
+    "@boombust/game-core": "workspace:*",
+    "boardgame.io": "^0.50.2"
+  }
+}

@@ -27,6 +27,12 @@ importers:
 
   client:
     dependencies:
+      '@boombust/game-core':
+        specifier: workspace:*
+        version: link:../packages/game-core
+      '@boombust/multiplayer':
+        specifier: workspace:*
+        version: link:../packages/multiplayer
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.2.14)(react@19.2.6)
@@ -86,8 +92,22 @@ importers:
         specifier: ^7.3.1
         version: 7.3.3(@types/node@25.7.0)
 
+  packages/game-core: {}
+
+  packages/multiplayer:
+    dependencies:
+      '@boombust/game-core':
+        specifier: workspace:*
+        version: link:../game-core
+      boardgame.io:
+        specifier: ^0.50.2
+        version: 0.50.2
+
   server:
     dependencies:
+      '@boombust/multiplayer':
+        specifier: workspace:*
+        version: link:../packages/multiplayer
       '@koa/cors':
         specifier: ^5.0.0
         version: 5.0.0

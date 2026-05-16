@@ -18,6 +18,7 @@ node_modules/
 .yarn/
 # build outputs and caches
 .next/
+client/dist/
 dist/
 build/
 out/

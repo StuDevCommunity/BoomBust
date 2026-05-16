@@ -1,57 +1,21 @@
 import { Box, Typography } from '@mui/material';
-import boardTiles, { TILE_COLORS, TILE_TYPES } from '../../game/boardTiles';
 import { BOARD_LAYOUT, getRectBoardPosition } from './boardLayout';
 import { getProfessionImage } from '../../utils/professionImages';
+import { selectBoardTiles, selectPlayersByTile } from '../../selectors/boardViewSelectors';
 
 const PLAYER_COLORS = ['#556B2F', '#8B6F47', '#2D3325', '#7C2D12', '#4A5568', '#B8B6AE'];
 
-const TILE_SHORT_LABEL = {
-	[TILE_TYPES.START]: 'START',
-	[TILE_TYPES.DEAL]: 'OPP',
-	[TILE_TYPES.MARKET]: 'MKT',
-	[TILE_TYPES.DOODAD]: 'DOD',
-	[TILE_TYPES.CHARITY]: 'CHR',
-	[TILE_TYPES.STORY]: 'STY',
-	[TILE_TYPES.DOWNSIZE]: 'DOWN',
-	[TILE_TYPES.FED_MEETING]: 'FED',
-	[TILE_TYPES.BANKRUPTCY]: 'COURT',
-	[TILE_TYPES.EMPTY]: 'SAFE',
-};
-
-const TILE_TYPE_LABEL = {
-	[TILE_TYPES.START]: 'Payday',
-	[TILE_TYPES.DEAL]: 'Opportunity',
-	[TILE_TYPES.MARKET]: 'Market',
-	[TILE_TYPES.DOODAD]: 'Doodad',
-	[TILE_TYPES.CHARITY]: 'Charity',
-	[TILE_TYPES.STORY]: 'Story',
-	[TILE_TYPES.DOWNSIZE]: 'Downsize',
-	[TILE_TYPES.FED_MEETING]: 'Fed Meeting',
-	[TILE_TYPES.BANKRUPTCY]: 'Bankruptcy',
-	[TILE_TYPES.EMPTY]: 'Safe',
-};
-
 const TOKEN_OFFSETS = [
 	{ x: 0, y: 0 },
-	{ x: 11, y: 0 },
-	{ x: 0, y: 11 },
-	{ x: 11, y: 11 },
-	{ x: -11, y: 0 },
-	{ x: 0, y: -11 },
+	{ x: 13, y: 0 },
+	{ x: 0, y: 13 },
+	{ x: 13, y: 13 },
+	{ x: -13, y: 0 },
+	{ x: 0, y: -13 },
 ];
-
-function getPlayersByTile(players) {
-	return Object.entries(players || {}).reduce((map, [id, player]) => {
-		const position = player.position ?? 0;
-		if (!map[position]) map[position] = [];
-		map[position].push({ id, player });
-		return map;
-	}, {});
-}
 
 function BoardTile({ tile, players, currentTurnPlayerID, playerID }) {
 	const isCorner = [0, 11, 22, 33].includes(tile.index);
-	const tileColor = TILE_COLORS[tile.type] || 'var(--gb-shell)';
 
 	return (
 		<Box
@@ -64,13 +28,14 @@ function BoardTile({ tile, players, currentTurnPlayerID, playerID }) {
 				minHeight: 0,
 				p: { xs: 0.35, md: 0.55 },
 				borderRadius: isCorner ? 1.2 : 0.8,
-				bgcolor: tileColor,
+				bgcolor: tile.color,
 				border: '2px solid rgba(29, 33, 24, 0.42)',
 				boxShadow: players.length ? '0 0 0 2px var(--gb-screen-glow), inset 0 0 0 1px rgba(255,255,255,0.25)' : 'inset 0 0 0 1px rgba(255,255,255,0.18)',
 				display: 'flex',
 				flexDirection: 'column',
 				justifyContent: 'space-between',
-				overflow: 'hidden',
+				overflow: 'visible',
+				zIndex: players.length ? 2 : 1,
 			}}
 		>
 			<Typography
@@ -83,7 +48,7 @@ function BoardTile({ tile, players, currentTurnPlayerID, playerID }) {
 					whiteSpace: 'pre-line',
 				}}
 			>
-				{isCorner ? tile.label : TILE_SHORT_LABEL[tile.type]}
+				{isCorner ? tile.label : tile.shortLabel}
 			</Typography>
 			<Typography
 				component="span"
@@ -94,9 +59,9 @@ function BoardTile({ tile, players, currentTurnPlayerID, playerID }) {
 					color: 'rgba(29, 33, 24, 0.72)',
 					textTransform: 'uppercase',
 				}}
-				noWrap
+			noWrap
 			>
-				{TILE_TYPE_LABEL[tile.type]}
+				{tile.typeLabel}
 			</Typography>
 			<Typography
 				component="span"
@@ -122,14 +87,14 @@ function BoardTile({ tile, players, currentTurnPlayerID, playerID }) {
 							key={id}
 							sx={{
 								position: 'absolute',
-								width: { xs: 19, md: 28 },
-								height: { xs: 19, md: 28 },
+								width: { xs: 21, md: 30 },
+								height: { xs: 21, md: 30 },
 								borderRadius: '50%',
 								transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
 								bgcolor: 'var(--gb-shell)',
-								border: isCurrent ? '3px solid var(--gb-screen-glow)' : '2px solid var(--gb-screen)',
+								border: isCurrent ? '3px solid var(--bb-active)' : '2px solid var(--gb-screen)',
 								boxShadow: isCurrent
-									? '0 0 0 3px rgba(85, 107, 47, 0.35), 0 0 18px rgba(85, 107, 47, 0.65)'
+									? '0 0 0 4px rgba(26, 163, 111, 0.26), 0 0 18px rgba(26, 163, 111, 0.72)'
 									: '0 3px 6px var(--gb-shadow)',
 								zIndex: isCurrent ? 4 : 3,
 								overflow: 'hidden',
@@ -174,7 +139,8 @@ const GameBoard = ({
 }) => {
 	if (!G?.players) return null;
 
-	const playersByTile = getPlayersByTile(G.players);
+	const boardTileViewModels = selectBoardTiles();
+	const playersByTile = selectPlayersByTile(G.players);
 	const currentStage = G.stage?.currentStageId || 'opening-bell';
 	const latestEvent = G.eventLog?.[G.eventLog.length - 1];
 
@@ -214,7 +180,7 @@ const GameBoard = ({
 					overflow: 'hidden',
 				}}
 			>
-				{boardTiles.map((tile) => (
+				{boardTileViewModels.map((tile) => (
 					<BoardTile
 						key={tile.id}
 						tile={tile}

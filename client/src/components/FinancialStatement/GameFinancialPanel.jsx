@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
 	Box,
 	Button,
@@ -31,12 +31,7 @@ import {
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 import { colors } from '../../theme';
-import {
-	EXPENSE_LABELS,
-	EXPENSE_TO_LIABILITY_KEY,
-	LIABILITY_KEYS,
-	LIABILITY_LABELS,
-} from '../../game/financeConfig';
+import { selectFinancialStatement } from '../../selectors/financialStatementSelectors';
 
 const SectionToggle = ({ title, icon, children, defaultOpen = false, badge }) => {
 	const [open, setOpen] = useState(defaultOpen);
@@ -383,6 +378,7 @@ const DebtPaymentDialog = ({ open, onClose, liability, onConfirm, playerCash }) 
 
 const GameFinancialPanel = ({
 	player,
+	financialStatement: providedFinancialStatement,
 	isCurrentTurn = false,
 	onTakeLoan,
 	onPayDebt,
@@ -397,27 +393,22 @@ const GameFinancialPanel = ({
 
 	if (!player || !player.isSetup) return null;
 
-	const paidOffLiabilities = player.paidOffLiabilities || [];
-	const assets = player.assets || [];
-	const passiveIncome = assets.reduce((sum, asset) => sum + (asset.cashFlow || 0) * (asset.units || 1), 0);
-	const baseExpenses = Object.entries(player.expenses || {}).reduce((sum, [expenseKey, value]) => {
-		const liabilityKey = EXPENSE_TO_LIABILITY_KEY[expenseKey];
-		if (liabilityKey && paidOffLiabilities.includes(liabilityKey)) {
-			return sum;
-		}
-		return sum + value;
-	}, 0);
-	const childExpenses = (player.childCount || 0) * (player.perChildExpense || 0);
-	const totalIncome = (player.salary || 0) + passiveIncome;
-	const totalExpenses = baseExpenses + childExpenses;
-	const cashFlow = totalIncome - totalExpenses;
-	const escapeProgress = totalExpenses > 0 ? Math.min(100, (passiveIncome / totalExpenses) * 100) : 100;
-	const canEscapeRatRace = passiveIncome > totalExpenses;
-	const assetMortgages = assets.filter((asset) => (asset.mortgage || 0) > 0);
-	const totalLiabilities = LIABILITY_KEYS.reduce(
-		(sum, liabilityKey) => sum + (player.liabilities?.[liabilityKey] || 0),
-		0
-	) + assetMortgages.reduce((sum, asset) => sum + (asset.mortgage || 0), 0);
+	const financialStatement = providedFinancialStatement || selectFinancialStatement(player);
+	const {
+		assets,
+		assetMortgages,
+		assetRows,
+		canEscapeRatRace,
+		cashFlow,
+		escapeProgress,
+		expenseRows,
+		incomeRows,
+		liabilityRows,
+		passiveIncome,
+		totalExpenses,
+		totalIncome,
+		totalLiabilities,
+	} = financialStatement;
 
 	const quickLoanOptions = [1000, 5000, 10000];
 	const roundedLoanAmount = Math.floor((Number(loanInput) || 0) / 1000) * 1000;
@@ -717,21 +708,16 @@ const GameFinancialPanel = ({
 						icon={<TrendingUp sx={{ fontSize: 15, color: colors.income.main }} />}
 						defaultOpen={false}
 					>
-						<FinanceRow label="Salary" value={player.salary || 0} color={colors.income.main} />
-						{assets.filter((asset) => (asset.cashFlow || 0) > 0).map((asset) => (
-							<FinanceRow
-								key={asset.id}
-								label={`${asset.name}${asset.units > 1 ? ` ×${asset.units}` : ''}`}
-								value={(asset.cashFlow || 0) * (asset.units || 1)}
-								color="var(--gb-screen-glow)"
-							/>
+						{incomeRows.map((row) => (
+							<Fragment key={row.key}>
+								{row.isTotal && <Divider sx={{ my: 0.5, borderColor: 'rgba(45, 58, 79, 0.3)' }} />}
+								<FinanceRow
+									label={row.label}
+									value={row.value}
+									color={row.isTotal || row.key === 'salary' ? colors.income.main : 'var(--gb-screen-glow)'}
+								/>
+							</Fragment>
 						))}
-						{passiveIncome > 0 && (
-							<>
-								<Divider sx={{ my: 0.5, borderColor: 'rgba(45, 58, 79, 0.3)' }} />
-								<FinanceRow label="Passive Income" value={passiveIncome} color={colors.income.main} />
-							</>
-						)}
 					</SectionToggle>
 
 					<Divider sx={{ borderColor: 'rgba(45, 58, 79, 0.3)' }} />
@@ -740,27 +726,14 @@ const GameFinancialPanel = ({
 						title="Expenses"
 						icon={<CreditCard sx={{ fontSize: 15, color: colors.expense.main }} />}
 					>
-						{Object.entries(player.expenses || {}).map(([expenseKey, value]) => {
-							const liabilityKey = EXPENSE_TO_LIABILITY_KEY[expenseKey];
-							const isPaidOff = liabilityKey ? paidOffLiabilities.includes(liabilityKey) : false;
-							if (value <= 0 && !isPaidOff) return null;
-
-							return (
-								<FinanceRow
-									key={expenseKey}
-									label={`${EXPENSE_LABELS[expenseKey] || expenseKey}${isPaidOff ? ' (paid off)' : ''}`}
-									value={isPaidOff ? 0 : value}
-										color={isPaidOff ? 'var(--bb-text-muted)' : colors.expense.main}
-								/>
-							);
-						})}
-						{player.childCount > 0 && (
+						{expenseRows.map((row) => (
 							<FinanceRow
-								label={`Children ×${player.childCount}`}
-								value={childExpenses}
-								color={colors.blue.main}
+								key={row.key}
+								label={row.label}
+								value={row.value}
+								color={row.isPaidOff ? 'var(--bb-text-muted)' : row.isChildExpense ? colors.blue.main : colors.expense.main}
 							/>
-						)}
+						))}
 					</SectionToggle>
 
 					<Divider sx={{ borderColor: 'rgba(45, 58, 79, 0.3)' }} />
@@ -775,35 +748,7 @@ const GameFinancialPanel = ({
 								No assets yet.
 							</Typography>
 						)}
-						{/* Group assets of same key+price into one display row */}
-						{(() => {
-							// Build grouped display: merge stock-like assets with same key into one
-							const groups = [];
-							for (const asset of assets) {
-								const isStock = asset.isStockLike || ['gold', 'coin', 'cd'].includes(asset.key);
-								if (isStock) {
-									const existing = groups.find(
-										(g) => g.isStockGroup && g.key === asset.key && g.purchasePrice === asset.purchasePrice
-									);
-									if (existing) {
-										existing.units += asset.units || 1;
-										existing.cashFlow += (asset.cashFlow || 0) * (asset.units || 1);
-									} else {
-										groups.push({
-											...asset,
-											units: asset.units || 1,
-											cashFlow: (asset.cashFlow || 0) * (asset.units || 1),
-											isStockGroup: true,
-											_originalAssets: [asset],
-										});
-									}
-								} else {
-									groups.push({ ...asset, isStockGroup: false });
-								}
-							}
-							return groups.map((asset) => {
-								const isStock = asset.isStockLike || ['gold', 'coin', 'cd'].includes(asset.key);
-								return (
+						{assetRows.map((asset) => (
 									<Box key={asset.id} sx={{ py: 0.65 }}>
 										<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
 											<Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600 }}>
@@ -819,9 +764,9 @@ const GameFinancialPanel = ({
 														fontVariantNumeric: 'tabular-nums',
 													}}
 												>
-													{(asset.cashFlow || 0) >= 0 ? '+' : ''}${(asset.cashFlow || 0).toLocaleString()}
-												</Typography>
-												{isCurrentTurn && onSellAsset && !player.isFastTrack && !isStock && (
+														{(asset.cashFlow || 0) >= 0 ? '+' : ''}${(asset.cashFlow || 0).toLocaleString()}
+													</Typography>
+												{isCurrentTurn && onSellAsset && !player.isFastTrack && !asset.isStock && (
 													<Button
 														size="small"
 														variant="outlined"
@@ -839,14 +784,11 @@ const GameFinancialPanel = ({
 										</Box>
 											<Typography variant="caption" sx={{ fontSize: 10, color: 'var(--bb-text-secondary)', fontWeight: 700 }}>
 											Cost ${(asset.purchasePrice || 0).toLocaleString()}
-											{/* Only show Down for real estate, not stocks */}
-											{!isStock && asset.downPayment ? ` | Down $${asset.downPayment.toLocaleString()}` : ''}
+											{!asset.isStock && asset.downPayment ? ` | Down $${asset.downPayment.toLocaleString()}` : ''}
 											{asset.mortgage ? ` | Debt $${asset.mortgage.toLocaleString()}` : ''}
 										</Typography>
 									</Box>
-								);
-							});
-						})()}
+						))}
 					</SectionToggle>
 
 					<Divider sx={{ borderColor: 'rgba(45, 58, 79, 0.3)' }} />
@@ -855,22 +797,17 @@ const GameFinancialPanel = ({
 						title="Liabilities"
 						icon={<TrendingDown sx={{ fontSize: 15, color: colors.warning.main }} />}
 					>
-						{LIABILITY_KEYS.map((liabilityKey) => {
-							const value = player.liabilities?.[liabilityKey] || 0;
-							const isPaidOff = paidOffLiabilities.includes(liabilityKey);
-							if (value <= 0 && !isPaidOff) return null;
-
-							return (
+						{liabilityRows.map((row) => (
 								<FinanceRow
-									key={liabilityKey}
-									label={`${LIABILITY_LABELS[liabilityKey]}${isPaidOff ? ' (paid off)' : ''}`}
-									value={value}
-										color={isPaidOff ? 'var(--bb-text-muted)' : colors.warning.main}
-									action={!isPaidOff && value > 0 ? (
+									key={row.key}
+									label={row.label}
+									value={row.value}
+										color={row.isPaidOff ? 'var(--bb-text-muted)' : colors.warning.main}
+									action={!row.isPaidOff && row.value > 0 ? (
 										<Button
 											size="small"
 											variant="outlined"
-											onClick={() => setSelectedLiability({ key: liabilityKey, label: LIABILITY_LABELS[liabilityKey], amount: value })}
+											onClick={() => setSelectedLiability({ key: row.key, label: row.rawLabel, amount: row.value })}
 											disabled={!isCurrentTurn || !onPayDebt}
 											sx={{
 												minWidth: 0,
@@ -882,11 +819,10 @@ const GameFinancialPanel = ({
 											}}
 										>
 											Pay
-										</Button>
+											</Button>
 									) : null}
 								/>
-							);
-						})}
+						))}
 
 						{assetMortgages.length > 0 && (
 							<>

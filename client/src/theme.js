@@ -74,6 +74,25 @@ const commonComponents = {
 		styleOverrides: {
 			paper: {
 				borderRadius: 16,
+				backgroundColor: 'var(--gb-shell)',
+				color: 'var(--bb-text-primary)',
+				border: '4px solid var(--gb-shell-dark)',
+				backgroundImage: 'none',
+				'& .MuiDialogTitle-root, & .MuiDialogContent-root, & .MuiDialogActions-root': {
+					color: 'var(--bb-text-primary)',
+				},
+				'& .MuiTypography-root': {
+					color: 'inherit',
+				},
+				'& .MuiInputLabel-root, & .MuiOutlinedInput-input': {
+					color: 'var(--bb-text-primary)',
+				},
+				'& .MuiOutlinedInput-notchedOutline': {
+					borderColor: 'rgba(29, 33, 24, 0.35)',
+				},
+				'& .MuiIconButton-root': {
+					color: 'var(--bb-text-primary)',
+				},
 			},
 		},
 	},

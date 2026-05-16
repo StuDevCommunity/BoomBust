@@ -34,7 +34,7 @@ import {
 import { Client } from 'boardgame.io/client';
 import { SocketIO } from 'boardgame.io/multiplayer';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { BoombustGame } from '../game/BoombustGame';
+import { BoombustGame } from '@boombust/multiplayer/boardgameio';
 import GameBoard from '../components/Board/GameBoard';
 import DiceRoller from '../components/Dice/DiceRoller';
 import DealModal from '../components/Deals/DealModal';
@@ -55,7 +55,15 @@ import { getRoomInfo } from '../services/apiService';
 import { colors } from '../theme';
 import { soundFX } from '../utils/soundEffects';
 import { getProfessionImage } from '../utils/professionImages';
-import { getStageDefinition } from '../game/boombust/stageEngine';
+import { getStageDefinition } from '@boombust/game-core/boombust/stageEngine';
+import {
+	selectCurrentPlayer,
+	selectCurrentPrompt,
+	selectEventFeed,
+	selectFinancialStatement,
+	selectMatchingMarketAssets,
+	selectPlayerRoster,
+} from '../selectors/gamePageSelectors';
 
 const PLAYER_COLORS = ['#556B2F', '#8B6F47', '#2D3325', '#7C2D12', '#4A5568', '#B8B6AE'];
 const LOG_TYPE_COLORS = {
@@ -71,28 +79,6 @@ const LOG_TYPE_COLORS = {
 	market: 'var(--bb-text-primary)',
 	dream: 'var(--bb-text-primary)',
 	bankrupt: '#7C2D12',
-};
-
-const assetMatchesMarketKey = (asset, key) => {
-	if (!asset || !key) return false;
-	if (asset.key === key) return true;
-
-	switch (key) {
-		case 'PLEX':
-			return ['DUPLEX', '4PLEX', '8PLEX'].includes(asset.key);
-		case 'APTHOUSE':
-			return asset.key === 'APTHOUSE';
-		case 'rental':
-			return ['2/1CONDO', '3/2HOUSE', 'DUPLEX', '4PLEX', '8PLEX', 'APTHOUSE', 'BED'].includes(asset.key);
-		case 'gold':
-			return asset.key === 'gold';
-		case 'coin':
-			return asset.key === 'coin';
-		case 'cd':
-			return asset.key === 'cd';
-		default:
-			return false;
-	}
 };
 
 const PlayerRosterCard = ({ players, currentPlayerId, selfPlayerId }) => {
@@ -371,6 +357,7 @@ const ProfessionRevealDialog = ({
 	open,
 	currentPlayer,
 	rosterItems,
+	financialStatement,
 	resolvedPlayerId,
 	onContinue,
 }) => {
@@ -424,7 +411,7 @@ const ProfessionRevealDialog = ({
 					<SummaryCard label="Cash" value={currentPlayer.cash || 0} color={colors.blue.main} />
 					<SummaryCard
 						label="Cash Flow"
-						value={(currentPlayer.salary || 0) - Object.values(currentPlayer.expenses || {}).reduce((sum, value) => sum + value, 0)}
+						value={financialStatement.payday}
 						color={colors.income.main}
 					/>
 				</Box>
@@ -711,14 +698,13 @@ const GamePage = () => {
 	const ctx = gameState?.ctx;
 	const currentTurnPlayerId = ctx?.currentPlayer;
 	const effectivePlayerId = isRemote ? resolvedPlayerId : String(currentTurnPlayerId ?? '0');
-	const currentPlayer = G?.players?.[effectivePlayerId];
+	const currentPlayer = selectCurrentPlayer(G, effectivePlayerId);
 	const isMainPlay = ctx?.phase === 'mainPlay';
 	const isMyTurn = isMainPlay && currentTurnPlayerId === effectivePlayerId;
-	const currentPrompt = currentPlayer?.pendingPrompts?.[0] || null;
-	const marketPrompt = currentPrompt?.kind === 'market' ? currentPrompt : null;
-	const doodadPrompt = currentPrompt?.kind === 'doodad' ? currentPrompt : null;
-	const downsizePrompt = currentPrompt?.kind === 'downsizeSkip' ? currentPrompt : null;
+	const { marketPrompt, doodadPrompt, downsizePrompt } = selectCurrentPrompt(currentPlayer);
 	const fastTrackPrompt = isMyTurn ? G?.currentFastTrackSpace : null;
+	const gameLog = selectEventFeed(G);
+	const financialStatement = selectFinancialStatement(currentPlayer);
 	const hasRolled = isMyTurn && Boolean(G?.dice?.value);
 	const hasDeal = Boolean(G?.currentDeal) && isMyTurn && hasRolled;
 	const isSelectingDeal = Boolean(G?.isSelectingDeal) && isMyTurn && hasRolled;
@@ -735,7 +721,7 @@ const GamePage = () => {
 	);
 
 	useEffect(() => {
-		const currentLogs = G?.gameLog || [];
+		const currentLogs = gameLog;
 		const currentLength = currentLogs.length;
 		const prevLength = prevLogLengthRef.current;
 
@@ -772,7 +758,7 @@ const GamePage = () => {
 			});
 			prevLogLengthRef.current = currentLength;
 		}
-	}, [G?.gameLog, effectivePlayerId]);
+	}, [gameLog, effectivePlayerId]);
 
 	useEffect(() => {
 		if (!isEndingTurn) return undefined;
@@ -809,26 +795,10 @@ const GamePage = () => {
 		}
 	}, [isMyTurn, currentTurnPlayerId, resolvedPlayerId, resolvedPlayerName, roster]);
 
-	const roomPlayersById = Object.fromEntries((roster || []).map((player) => [String(player.id), player]));
-	const orderedPlayerIds = ctx?.playOrder || G?.turnOrder || Object.keys(G?.players || {});
-
-	const rosterItems = orderedPlayerIds.map((id, index) => {
-		const player = G?.players?.[id];
-		const roomPlayer = roomPlayersById[id];
-		return {
-			id,
-			index,
-			name: roomPlayer?.name || `Player ${parseInt(id, 10) + 1}`,
-			profession: player?.profession?.title || null,
-			professionId: player?.profession?.id || null,
-			downsizeTurns: player?.downsizeTurns || 0,
-			charityTurns: player?.charityTurns || 0,
-		};
-	});
+	const rosterItems = selectPlayerRoster(G, ctx, roster);
 
 	const matchingMarketAssets = useMemo(() => {
-		if (!marketPrompt || !currentPlayer) return [];
-		return (currentPlayer.assets || []).filter((asset) => assetMatchesMarketKey(asset, marketPrompt.key));
+		return selectMatchingMarketAssets(currentPlayer, marketPrompt);
 	}, [currentPlayer, marketPrompt]);
 
 	const openBorrowDialog = useCallback((request) => {
@@ -1100,7 +1070,7 @@ const GamePage = () => {
 	// Board area — used in all layouts
 	const boardInner = (
 		<>
-			<GlobalNews gameLog={G.gameLog || []} isMobile={isMobile} bottomOffset={isMobile ? 98 : 18} />
+			<GlobalNews gameLog={gameLog} isMobile={isMobile} bottomOffset={isMobile ? 98 : 18} />
 			<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: isMobile && !isLandscape ? 0.75 : 1.25 }}>
 				<Box sx={{ minWidth: 0 }}>
 					<Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2, fontSize: isMobile ? 9 : 10 }}>
@@ -1210,17 +1180,18 @@ const GamePage = () => {
 
 	const rightRail = (
 		<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0, '& > *': { flexShrink: 0 } }}>
+			<StageContextPanel stage={currentStageDefinition} />
+			<StockMarketPanel stockMarket={G.stockMarket} />
 			<GameFinancialPanel
 				player={currentPlayer}
+				financialStatement={financialStatement}
 				isCurrentTurn={isMyTurn}
 				onTakeLoan={handleTakeLoan}
 				onPayDebt={handlePayDebt}
 				onSellAsset={handleSellAsset}
 				onDeclareBankruptcy={handleDeclareBankruptcy}
 			/>
-			<StageContextPanel stage={currentStageDefinition} />
 			<PlayerRosterCard players={rosterItems} currentPlayerId={currentTurnPlayerId} selfPlayerId={effectivePlayerId} />
-			<StockMarketPanel stockMarket={G.stockMarket} />
 		</Box>
 	);
 	return (
@@ -1328,7 +1299,7 @@ const GamePage = () => {
 							<Close fontSize="small" />
 						</IconButton>
 					</Box>
-					<EventFeedCard gameLog={G.gameLog || []} />
+					<EventFeedCard gameLog={gameLog} />
 				</Box>
 			</Drawer>
 
@@ -1419,6 +1390,7 @@ const GamePage = () => {
 				open={Boolean(currentPlayer?.profession) && !introAcknowledged && !hasContextModal}
 				currentPlayer={currentPlayer}
 				rosterItems={rosterItems}
+				financialStatement={financialStatement}
 				resolvedPlayerId={resolvedPlayerId}
 				onContinue={() => setIntroAcknowledged(true)}
 			/>

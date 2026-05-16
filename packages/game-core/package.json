@@ -1,0 +1,25 @@
+{
+  "name": "@boombust/game-core",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./boardTiles": "./src/boardTiles.js",
+    "./financeConfig": "./src/financeConfig.js",
+    "./fastTrackConfig": "./src/fastTrackConfig.js",
+    "./application/commands": "./src/application/commands/index.js",
+    "./boombust/stageEngine": "./src/boombust/stageEngine.js",
+    "./boombust/stockMarketEngine": "./src/boombust/stockMarketEngine.js",
+    "./boombust/marketEventEngine": "./src/boombust/marketEventEngine.js",
+    "./domain/finance/financeService": "./src/domain/finance/financeService.js",
+    "./domain/effects": "./src/domain/effects/index.js",
+    "./domain/board/tileResolutionService": "./src/domain/board/tileResolutionService.js",
+    "./domain/datasets": "./src/domain/datasets/index.js",
+    "./data/bigdeal.json": "./src/data/bigdeal.json",
+    "./data/smalldeal.json": "./src/data/smalldeal.json",
+    "./data/market.json": "./src/data/market.json",
+    "./data/doodads.json": "./src/data/doodads.json",
+    "./data/careers.json": "./src/data/careers.json"
+  }
+}
