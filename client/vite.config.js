@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  preview: {
+    allowedHosts: ['boombust.studev.id.vn'],
+  },
   server: {
     port: 5174,
     strictPort: true,
